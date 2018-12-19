@@ -6,7 +6,7 @@ import (
 	elastic "gopkg.in/olivere/elastic.v5"
 	"log"
 	"os"
-	"github.com/hectorgool/mvp_gbm/common"
+	"github.com/hectorgool/gbm/common"
 	"github.com/satori/go.uuid"
 	"encoding/json"
 	//debug "github.com/davecgh/go-spew/spew"

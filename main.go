@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/hectorgool/mvp_gbm/common"
-	"github.com/hectorgool/mvp_gbm/elasticsearch"
+	"github.com/hectorgool/gbm/common"
+	"github.com/hectorgool/gbm/elasticsearch"
 	"net/http"
 )
 

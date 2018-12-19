@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hectorgool/mvp_gbm/common"
 	"github.com/hectorgool/mvp_gbm/elasticsearch"
+	"net/http"
 )
 
 func main() {
@@ -19,16 +20,19 @@ func main() {
 
 	})
 
-	r.GET("/geolocation", func(c *gin.Context) {
-		
+	// /geolocation/666-xxx
+	r.GET("/geolocation/:vehicleid", func(c *gin.Context) {
+
+		vehicleid := c.Param("vehicleid")
+
 		latitude, longitud, err := common.JSONToStruct()
 		common.CheckError(err)
 
-		if err := elasticsearch.CreateDocument(latitude, longitud); err != nil {
+		if err := elasticsearch.CreateDocument(vehicleid, latitude, longitud); err != nil {
 			common.CheckError(err)
 		}
 
-		c.JSON(200, gin.H{ 
+		c.JSON(http.StatusOK, gin.H{ 
 			"latitude": latitude,
 			"longitud": longitud,
 		})
@@ -36,8 +40,9 @@ func main() {
 	})
 
 	r.GET("/record", func(c *gin.Context) {
-		
-		result, err := elasticsearch.Search()
+
+		q := c.DefaultQuery("q", "")
+		result, err := elasticsearch.Search(q)
 		common.CheckError(err)
 		c.JSON(200, gin.H{"data": result})
 

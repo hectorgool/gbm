@@ -7,6 +7,7 @@ import(
     "io/ioutil"
     "net/http"
     "encoding/json"
+    "time"
 )
 
 const(
@@ -69,4 +70,8 @@ func JSONToStruct()(float64, float64, error) {
         return 0, 0, err
     }
 	return ipData.Latitude, ipData.Longitude, nil
+}
+
+func MakeTimestamp() int64 {
+    return time.Now().UnixNano() / int64(time.Millisecond)
 }

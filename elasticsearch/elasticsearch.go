@@ -9,7 +9,7 @@ import (
 	"github.com/hectorgool/mvp_gbm/common"
 	"github.com/satori/go.uuid"
 	"encoding/json"
-	//"github.com/davecgh/go-spew/spew"
+	//debug "github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -18,7 +18,9 @@ var (
 
 type(
 	SearchResult struct{
+		VehicleID string `json:"vehicleid"`
 		Location Location `json:"location"`
+		Date string `json:"date"`
 	}
 	Location struct{
     	Latitude string `json:"lat"`
@@ -50,33 +52,22 @@ func indexExists(){
 
 func createIndex(){
 	mapping := `{
-		"settings": {
-			"index": {
-				"analysis": {
-					"analyzer": {
-						"autocomplete": {
-							"tokenizer": "whitespace",
-							"filter": [
-								"lowercase",
-								"engram"
-							]
-						}
-					},
-					"filter": {
-						"engram": {
-							"type": "edgeNGram",
-							"min_gram": 1,
-							"max_gram": 10
-						}
-					}
-				}
-			}
+		"settings":{
+			"number_of_shards":1,
+			"number_of_replicas":0
 		},
 		"mappings": {
-			"vehicle": {
-				"properties": {	
+			"vehicle": { 
+				"properties": {
+					"vehicleid": {
+						"type": "text",
+						"store": true
+					},
 					"location": {
 						"type": "geo_point"
+					},
+					"date": {
+						"type": "date" 
 					}
 				}
 			}
@@ -121,16 +112,19 @@ func ReadDocument(id string) {
 }
 
 // CreateDocument fuction save json in the server
-func CreateDocument( latitude, longitude float64 ) error {
+func CreateDocument( vehicleid string, latitude, longitude float64 ) error {
+
 	id := uuid.Must(uuid.NewV4()).String()
 	jsonData := fmt.Sprintf(
 	`{
+		"vehicleid": "%v",
 		"location": { 
 			"lat": "%v",
 			"lon": "%v"
-		}
+		},
+		"date": "%v"
 
-	}`, latitude, longitude )
+	}`, vehicleid, latitude, longitude, common.MakeTimestamp() )
 
 	ctx := context.Background()
 	doc, err := client.Index().
@@ -144,14 +138,33 @@ func CreateDocument( latitude, longitude float64 ) error {
 	return nil
 }
 
-// GetDocuments fuction save json in the server
-func GetDocuments() (*elastic.SearchResult, error) {
-	searchJSON := `{
-		"query": { 
-			"match_all": {}
-		}
-	}`
+func queryTerm(q string) string{
+	
+	var searchJSON string
+	
+	if( q == ""){
+		searchJSON = `{
+			"query": { 	
+				"match_all": {}
+			}	
+		}`	
+	} else{	
+		searchJSON = fmt.Sprintf(`{
+			"query" : {
+				"match": {
+					"vehicleid" : "%v"
+				}
+			}
+		}`, q)
+	}
+	return searchJSON
+}
 
+
+// GetDocuments fuction save json in the server
+func GetDocuments(q string) (*elastic.SearchResult, error) {
+
+	searchJSON := queryTerm(q)
 	ctx := context.Background()
 	searchResult, err := client.Search().
 		Index(os.Getenv("ELASTICSEARCH_INDEX")).
@@ -163,10 +176,9 @@ func GetDocuments() (*elastic.SearchResult, error) {
 	return searchResult, nil
 }
 
-func DisplayResults( searchResult *elastic.SearchResult ) ([]*Location, error) {
+func DisplayResults( searchResult *elastic.SearchResult ) ([]*SearchResult, error) {
 
-    var Documents []*Location
-
+    var Documents []*SearchResult
     for _, hit := range searchResult.Hits.Hits {
         var d SearchResult	
 		//parses *hit.Source into the instance of the Document struct
@@ -175,9 +187,13 @@ func DisplayResults( searchResult *elastic.SearchResult ) ([]*Location, error) {
 
         Documents = append(
 			Documents, 
-			&Location{
-				Latitude: d.Location.Latitude, 
-				Longitude: d.Location.Longitude,
+			&SearchResult{
+				VehicleID: d.VehicleID,
+				Location: Location{
+					Latitude: d.Location.Latitude, 
+					Longitude: d.Location.Longitude,
+				},
+				Date: d.Date,
 			},
 		)
 	}
@@ -185,9 +201,9 @@ func DisplayResults( searchResult *elastic.SearchResult ) ([]*Location, error) {
 
 }
 
-func Search() ([]*Location, error) {
+func Search(q string) ([]*SearchResult, error) {
 
-	searchResult, err := GetDocuments()
+	searchResult, err := GetDocuments(q)
 	common.CheckError(err)
 	result, err := DisplayResults(searchResult)
 	common.CheckError(err)

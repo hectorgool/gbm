@@ -76,6 +76,17 @@ Se debe de mostrar una salida como la siguiente:
 
 [Las instrucciones las puedes encontrar aquí](https://golang.org/doc/install)
 
+Para instalar las dependencias del proyecto:
+
+```sh
+go get ./...
+```
+
+Para correr test:
+
+```sh
+go test -timeout 99999s ./... -p 1
+```
 
 Para compilar ejecutar el programa:
 

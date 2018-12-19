@@ -12,6 +12,31 @@ import (
 	//debug "github.com/davecgh/go-spew/spew"
 )
 
+const(
+	mapping string = `{
+		"settings":{
+			"number_of_shards":1,
+			"number_of_replicas":0
+		},
+		"mappings": {
+			"vehicle": { 
+				"properties": {
+					"vehicleid": {
+						"type": "text",
+						"store": true
+					},
+					"location": {
+						"type": "geo_point"
+					},
+					"date": {
+						"type": "date" 
+					}
+				}
+			}
+		}
+	}`
+)
+
 var (
 	client *elastic.Client
 )
@@ -51,29 +76,6 @@ func indexExists(){
 }
 
 func createIndex(){
-	mapping := `{
-		"settings":{
-			"number_of_shards":1,
-			"number_of_replicas":0
-		},
-		"mappings": {
-			"vehicle": { 
-				"properties": {
-					"vehicleid": {
-						"type": "text",
-						"store": true
-					},
-					"location": {
-						"type": "geo_point"
-					},
-					"date": {
-						"type": "date" 
-					}
-				}
-			}
-		}
-	}`
-	
 	ctx := context.Background()
 	createIndex, err := client.CreateIndex(os.Getenv("ELASTICSEARCH_INDEX")).BodyString(mapping).Do(ctx)
 	common.CheckError(err)
@@ -94,37 +96,26 @@ func Ping() (string, error) {
 
 }
 
-// Read Document
-func ReadDocument(id string) {
+func jsonDocument( vehicleid string, latitude, longitude float64 ) string {
 
-	ctx := context.Background()
-	get, err := client.Get().
-		Index(os.Getenv("ELASTICSEARCH_INDEX")).
-		Type(os.Getenv("ELASTICSEARCH_TYPE")).
-	    Id(id).
-	    Do(ctx)
-	common.CheckError(err)
-
-	if get.Found {
-	    log.Printf("Got document %s in version %d from index %s, type %s\n", get.Id, get.Version, get.Index, get.Type)
-	}
-
+	jsonData := fmt.Sprintf(
+		`{
+			"vehicleid": "%v",
+			"location": { 
+				"lat": "%v",
+				"lon": "%v"
+			},
+			"date": "%v"
+	
+		}`, vehicleid, latitude, longitude, common.MakeTimestamp() )
+	return jsonData
 }
 
 // CreateDocument fuction save json in the server
 func CreateDocument( vehicleid string, latitude, longitude float64 ) error {
 
 	id := uuid.Must(uuid.NewV4()).String()
-	jsonData := fmt.Sprintf(
-	`{
-		"vehicleid": "%v",
-		"location": { 
-			"lat": "%v",
-			"lon": "%v"
-		},
-		"date": "%v"
-
-	}`, vehicleid, latitude, longitude, common.MakeTimestamp() )
+	jsonData := jsonDocument(vehicleid, latitude, longitude)
 
 	ctx := context.Background()
 	doc, err := client.Index().
@@ -181,7 +172,7 @@ func DisplayResults( searchResult *elastic.SearchResult ) ([]*SearchResult, erro
     var Documents []*SearchResult
     for _, hit := range searchResult.Hits.Hits {
         var d SearchResult	
-		//parses *hit.Source into the instance of the Document struct
+		
         err := json.Unmarshal(*hit.Source, &d)
 		common.CheckError(err)
 

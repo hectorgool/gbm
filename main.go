@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func main() {
+func setupRouter() *gin.Engine {
 
 	r := gin.Default()
 	r.Use(common.CORSMiddleware())
@@ -48,6 +48,11 @@ func main() {
 
 	})
 
-	r.Run(common.PORT) // listen and serve on 0.0.0.0:8080
+	return r
 
+}
+
+func main() {
+	r := setupRouter()
+	r.Run(common.PORT) // listen and serve on 0.0.0.0:8080
 }
